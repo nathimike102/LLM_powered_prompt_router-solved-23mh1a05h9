@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: llm-powered-prompt-router
+    name: llm_powered_prompt_router
     runtime: node
     plan: free
     autoDeploy: true
