@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: llm-powered-prompt-router
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 10000
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CLASSIFIER_MODEL
+        value: llama-3.1-8b-instant
+      - key: GENERATION_MODEL
+        value: llama-3.3-70b-versatile
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.7"
