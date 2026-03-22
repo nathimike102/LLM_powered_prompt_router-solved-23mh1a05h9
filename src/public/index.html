@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Powered Prompt Router</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07131a;
+      --panel: #0d1f29;
+      --panel-2: #132b38;
+      --text: #eaf6fb;
+      --muted: #8aa9b8;
+      --line: #204153;
+      --accent: #15c39a;
+      --accent-2: #ff8f3f;
+      --danger: #ff6b6b;
+      --ok: #66d08b;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Manrope, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(21, 195, 154, 0.18), transparent 30%),
+        radial-gradient(circle at 90% 20%, rgba(255, 143, 63, 0.15), transparent 30%),
+        linear-gradient(180deg, #07131a 0%, #081922 100%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding: 18px 22px;
+      background: rgba(7, 19, 26, 0.8);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.08rem;
+      letter-spacing: 0.2px;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .health {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(19, 43, 56, 0.7);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    }
+
+    main {
+      width: min(980px, 100% - 24px);
+      margin: 14px auto 18px;
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(13, 31, 41, 0.94), rgba(13, 31, 41, 0.88));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .controls {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hint {
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .example {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
+      color: var(--text);
+      text-align: left;
+      padding: 9px 10px;
+      font: inherit;
+      font-size: 0.84rem;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .example:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .chat {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      min-height: 72vh;
+    }
+
+    .feed {
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      padding: 18px;
+      line-height: 1.5;
+      font-size: 0.9rem;
+      background: rgba(19, 43, 56, 0.35);
+    }
+
+    .msg {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      line-height: 1.55;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(19, 43, 56, 0.45);
+    }
+
+    .msg.user {
+      border-color: #2f566a;
+      background: rgba(21, 195, 154, 0.12);
+    }
+
+    .meta {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    .composer {
+      border-top: 1px solid var(--line);
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      background: rgba(7, 19, 26, 0.5);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 82px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0a1a23;
+      color: var(--text);
+      padding: 10px 11px;
+      font: inherit;
+      line-height: 1.45;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(21, 195, 154, 0.13);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    button.primary,
+    button.ghost {
+      border-radius: 10px;
+      border: 1px solid transparent;
+      padding: 10px 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), #0bb78b);
+      color: #062017;
+    }
+
+    button.primary:hover {
+      filter: brightness(1.06);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: var(--line);
+    }
+
+    button.ghost:hover {
+      color: var(--text);
+      border-color: var(--accent-2);
+    }
+
+    .status {
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 0 2px;
+      min-height: 18px;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    @media (max-width: 860px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .chat {
+        min-height: 66vh;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="title-row">
+      <div>
+        <h1>LLM Powered Prompt Router</h1>
+        <div class="sub">Send messages, inspect intent classification, and validate final responses in real time.</div>
+      </div>
+      <div class="health" id="healthBadge">
+        <span class="dot" id="healthDot"></span>
+        <span id="healthText">Checking API...</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Quick Inputs</h2>
+      <div class="controls">
+        <div class="hint">Use these examples to verify routing quickly. Override is supported (for example:
+          <code>@code fix this</code>).</div>
+        <button class="example" data-example="write a react component that fetches users and handles loading state">Code
+          request</button>
+        <button class="example" data-example="analyze sales data trend from Q1 to Q4 and suggest chart types">Data
+          request</button>
+        <button class="example" data-example="improve this sentence to sound concise and professional">Writing
+          request</button>
+        <button class="example" data-example="how should i prepare for a backend developer interview in 30 days">Career
+          request</button>
+        <button class="example" data-example="hello">Unclear request</button>
+      </div>
+    </section>
+
+    <section class="card chat">
+      <div class="feed" id="feed">
+        <div class="empty" id="emptyState">
+          Frontend is ready for live testing. Enter a prompt and click <strong>Send</strong> to call the LLM pipeline
+          through <code>/api/route</code>.
+        </div>
+      </div>
+
+      <div class="composer">
+        <div>
+          <textarea id="message" placeholder="Type a prompt for live testing..."></textarea>
+          <div class="status" id="status"></div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="sendBtn">Send</button>
+          <button class="ghost" id="clearBtn">Clear</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const feed = document.getElementById('feed');
+    const emptyState = document.getElementById('emptyState');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusEl = document.getElementById('status');
+    const healthDot = document.getElementById('healthDot');
+    const healthText = document.getElementById('healthText');
+
+    let chatHistory = [];
+
+    function addMessage(type, text, meta = null) {
+      if (emptyState) emptyState.remove();
+
+      const msg = document.createElement('div');
+      msg.className = `msg ${type}`;
+      msg.textContent = text;
+
+      if (meta) {
+        const metaEl = document.createElement('div');
+        metaEl.className = 'meta';
+        metaEl.innerHTML = `
+          <span>intent=${meta.intent ?? 'n/a'}</span>
+          <span>confidence=${typeof meta.confidence === 'number' ? meta.confidence.toFixed(2) : 'n/a'}</span>
+          <span>persona=${meta.persona ?? 'n/a'}</span>
+          <span>time=${meta.responseTime ?? 'n/a'}ms</span>
+        `;
+        msg.appendChild(metaEl);
+      }
+
+      feed.appendChild(msg);
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    function setStatus(text, kind = '') {
+      statusEl.textContent = text;
+      statusEl.className = `status ${kind}`;
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error('Health check failed');
+        healthDot.style.background = 'var(--ok)';
+        healthDot.style.boxShadow = '0 0 10px rgba(102,208,139,0.7)';
+        healthText.textContent = 'API online';
+      } catch {
+        healthDot.style.background = 'var(--danger)';
+        healthDot.style.boxShadow = '0 0 10px rgba(255,107,107,0.7)';
+        healthText.textContent = 'API offline';
+      }
+    }
+
+    async function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) {
+        setStatus('Please enter a message.', 'error');
+        return;
+      }
+
+      setStatus('Sending request...', '');
+      sendBtn.disabled = true;
+      addMessage('user', message);
+
+      try {
+        const res = await fetch('/api/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, history: chatHistory }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+
+        addMessage('assistant', data.response || '', data);
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'assistant', content: data.response || '' });
+        
+        setStatus('Response received.', 'ok');
+        messageInput.value = '';
+      } catch (error) {
+        addMessage('assistant', `Error: ${error.message || 'Unknown error'}`);
+        setStatus('Request failed.', 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    clearBtn.addEventListener('click', () => {
+      feed.innerHTML = '';
+      chatHistory = [];
+      feed.appendChild(emptyState || document.createElement('div'));
+      if (emptyState) {
+        emptyState.textContent = 'Frontend is ready for live testing. Enter a prompt and click Send to test';
+      }
+      setStatus('Cleared.', '');
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    document.querySelectorAll('.example').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        messageInput.value = btn.dataset.example || '';
+        messageInput.focus();
+        setStatus('Example loaded. Press Send.', '');
+      });
+    });
+
+    checkHealth();
+    setInterval(checkHealth, 12000);
+  </script>
+</body>
+
+</html>
